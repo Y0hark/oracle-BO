@@ -67,8 +67,9 @@ jobs:
     needs: generate_static_files
     runs-on: ubuntu-latest
     steps:
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
+      - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ORACLE_BO }}'
@@ -94,4 +95,15 @@ jobs:
     steps:
       - uses: Ilshidur/action-discord@master
         with:
-          args: 'Pipeline failed.'
+          args: 'The generation of static files has failed.'
+
+  send_discord_deployment_message_fail:
+    if: ${{ failure() }}
+    needs: deploy_to_firebase
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_CAP_HOOK_ORACLE_BO }}
+    steps:
+      - uses: Ilshidur/action-discord@master
+        with:
+          args: 'The deployment has failed.'
