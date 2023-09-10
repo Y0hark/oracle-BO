@@ -7,23 +7,64 @@ name: Deploy to Firebase Hosting on merge
     branches:
       - main
 jobs:
-  build_and_deploy:
-
+  send_discord_push_message:
     runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_CAP_HOOK_ORACLE_BO }}
+    steps:
+      - uses: Ilshidur/action-discord@master
+        with:
+          args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} has received a push event on main.'
 
+  build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
           cache: 'npm'
       - run: npm install
       - run: npm run build --if-present
+
+  generate_static_files:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: action/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: npm
       - run: npm run generate
+
+  send_discord_generate_message:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_CAP_HOOK_ORACLE_BO }}
+    steps:
+      - uses: Ilshidur/action-discord@master
+        with:
+          args: 'The generation of static files for {{ EVENT_PAYLOAD.repository.full_name }} is complete, deploying to firebase...'
+
+  deploy_to_firebase:
+    needs: generate_static_files
+    runs-on: ubuntu-latest
+    steps:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ORACLE_BO }}'
           channelId: live
           projectId: oracle-bo
+
+  send_discord_deployed_message:
+    needs: deploy_to_firebase
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_CAP_HOOK_ORACLE_BO }}
+    steps:
+      - uses: Ilshidur/action-discord@master
+        with:
+          args: 'The deployment for {{ EVENT_PAYLOAD.repository.full_name }} is complete!'
