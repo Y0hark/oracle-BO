@@ -44,6 +44,7 @@ jobs:
         with:
           node-version: 18.x
           cache: npm
+      - run: npm install
       - run: npm run generate
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
